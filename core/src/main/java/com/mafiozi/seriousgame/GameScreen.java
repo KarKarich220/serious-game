@@ -74,8 +74,7 @@ public class GameScreen implements Screen {
         // --- Инициализация графики ---
         batch = new SpriteBatch();
         shapes = new ShapeRenderer();
-        font = new BitmapFont();
-        font.getData().setScale(2.0f);
+        font = am.get("assets/fonts/font.fnt", BitmapFont.class);
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 320, 240);

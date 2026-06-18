@@ -6,6 +6,7 @@ import com.badlogic.gdx.assets.loaders.resolvers.InternalFileHandleResolver;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 
@@ -23,6 +24,8 @@ public class Main extends Game {
         assetManager.load("assets/guide_npc.png", Texture.class);
         assetManager.load("assets/music/background_music.ogg", Music.class);
         assetManager.load("assets/sounds/npc_guide_type.wav", Sound.class);
+        
+        assetManager.load("assets/fonts/font.fnt", BitmapFont.class);
 
         assetManager.finishLoading();
         
