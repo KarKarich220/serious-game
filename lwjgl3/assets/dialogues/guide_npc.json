@@ -1,0 +1,96 @@
+{
+  "startNode": "greeting",
+  "nodes": {
+    "greeting": {
+      "id": "greeting",
+      "text": "Greetings, traveler! {pause:0.3} <shake>I am the Guide, {pause:0.3} </shake> and I will teach you about the world. {pause:0.3} Welcome!",
+      "choices": [
+        { "text": "What can you teach me?", "nextNodeId": "effects_intro" },
+        { "text": "I'm not interested", "nextNodeId": "goodbye" }
+      ],
+      "next": null
+    },
+    "effects_intro": {
+      "id": "effects_intro",
+      "text": "First, let me show you something. {pause:0.3} This world is alive, and words have power. {pause:0.3} <shake>Watch this.</shake>",
+      "choices": [
+        { "text": "How did you do that?", "nextNodeId": "shake_explain" },
+        { "text": "Show me more", "nextNodeId": "color_intro" }
+      ],
+      "next": null
+    },
+    "shake_explain": {
+      "id": "shake_explain",
+      "text": "That was the Shake effect. {pause:0.2} <shake>It makes the text tremble,</shake> like the ground beneath your feet. {pause:0.3} Use it for emphasis or when something dramatic happens.",
+      "choices": [
+        { "text": "Can you combine it with other effects?", "nextNodeId": "color_intro" },
+        { "text": "What else can you do?", "nextNodeId": "color_intro" }
+      ],
+      "next": null
+    },
+    "color_intro": {
+      "id": "color_intro",
+      "text": "Now watch the colors. {pause:0.3} <color:#FF0000>Red for danger,</color> {pause:0.2} <color:#00FF00>green for hope,</color> {pause:0.2} <color:#FFD700>gold for wisdom.</color> {pause:0.3} Each color tells a story.",
+      "choices": [
+        { "text": "Can you mix colors and shake?", "nextNodeId": "mix_effects" },
+        { "text": "What about pauses?", "nextNodeId": "pause_explain" }
+      ],
+      "next": null
+    },
+    "mix_effects": {
+      "id": "mix_effects",
+      "text": "Of course! <shake><color:#FF00FF>You can combine shake and color,</color></shake> {pause:0.2} <shake><color:#00FFFF>or any other effect.</color></shake> {pause:0.3} The possibilities are endless.",
+      "choices": [
+        { "text": "Tell me about pauses", "nextNodeId": "pause_explain" },
+        { "text": "What else is there?", "nextNodeId": "music_intro" }
+      ],
+      "next": null
+    },
+    "pause_explain": {
+      "id": "pause_explain",
+      "text": "Pauses create rhythm. {pause:0.5} They let words breathe. {pause:0.3} {pause:0.2} See? {pause:0.4} A moment of silence can be as powerful as words.",
+      "choices": [
+        { "text": "Show me more effects", "nextNodeId": "music_intro" },
+        { "text": "I understand", "nextNodeId": "summary" }
+      ],
+      "next": null
+    },
+    "music_intro": {
+      "id": "music_intro",
+      "text": "Music shapes the mood. {pause:0.3} The world has many songs, {pause:0.2} and they change with the story. {pause:0.3} Listen carefully, and you will always know what to feel.",
+      "choices": [
+        { "text": "Can you change the music?", "nextNodeId": "music_demo" },
+        { "text": "I think I understand", "nextNodeId": "summary" }
+      ],
+      "next": null
+    },
+    "music_demo": {
+      "id": "music_demo",
+      "text": "I cannot change it here, {pause:0.2} but know this: {pause:0.3} <shake>When the music changes,</shake> {pause:0.2} the world changes with it. {pause:0.3} <color:#FFD700>Remember this.</color>",
+      "choices": [
+        { "text": "I will remember", "nextNodeId": "summary" }
+      ],
+      "next": null
+    },
+    "summary": {
+      "id": "summary",
+      "text": "So, to summarize: {pause:0.3} <shake>Shake</shake> for impact, {pause:0.2} <color:#FF0000>colors</color> for emotion, {pause:0.2} pauses for rhythm, {pause:0.2} and music for soul. {pause:0.5} <shake><color:#FFD700>Go forth and explore!</color></shake>",
+      "choices": [
+        { "text": "Thank you, Guide!", "nextNodeId": "final" }
+      ],
+      "next": null
+    },
+    "final": {
+      "id": "final",
+      "text": "Farewell, traveler. {pause:0.3} May your journey be <shake><color:#00FF00>extraordinary.</color></shake> {pause:0.5} Goodbye.",
+      "choices": [],
+      "next": null
+    },
+    "goodbye": {
+      "id": "goodbye",
+      "text": "Very well. {pause:0.2} If you change your mind, {pause:0.2} <shake>I will be here.</shake>",
+      "choices": [],
+      "next": null
+    }
+  }
+}

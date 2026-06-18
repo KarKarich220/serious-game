@@ -1,0 +1,370 @@
+package com.mafiozi.seriousgame;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.assets.AssetManager;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.files.FileHandle;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.maps.MapLayer;
+import com.badlogic.gdx.maps.MapObject;
+import com.badlogic.gdx.maps.objects.RectangleMapObject;
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TiledMapRenderer;
+import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
+import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.ExtendViewport;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import com.badlogic.gdx.utils.viewport.Viewport;
+import com.mafiozi.seriousgame.dialogue.Dialogue;
+import com.mafiozi.seriousgame.dialogue.DialogueChoice;
+import com.mafiozi.seriousgame.dialogue.DialogueComponent;
+import com.mafiozi.seriousgame.dialogue.DialogueLoader;
+import com.mafiozi.seriousgame.dialogue.DialogueManager;
+import com.mafiozi.seriousgame.dialogue.DialogueSession;
+
+public class GameScreen implements Screen {
+    private final Main game;
+    private SpriteBatch batch;
+    private ShapeRenderer shapes;
+    private OrthographicCamera camera;
+    private OrthographicCamera uiCamera;
+    private Player player;
+    private TiledMap map;
+    private TiledMapRenderer mapRenderer;
+    private TiledMapTileLayer wallLayer;
+    private EntityManager entityManager;
+    private boolean showDialogue = false;
+    private BitmapFont font;
+    private Viewport viewport;
+    private FitViewport uiViewport;
+    private DialogueManager dialogueManager;
+    private Music bgMusic;
+    private DialogueSession currentSession = null;
+    private float dialogueTimer = 0f;
+    private int dialogueCharCount = 0;
+    private String currentDisplayText = "";
+    private String lastFullText = "";
+    private NPC currentNPC = null;
+    private Sound currentTypingSound = null;
+    private GlyphLayout layout;
+
+    public GameScreen(Main game) {
+        this.game = game;
+        AssetManager am = game.getAssetManager();
+        
+        batch = new SpriteBatch();
+        shapes = new ShapeRenderer();
+        
+        map = am.get("assets/map.tmx", TiledMap.class);
+        mapRenderer = new OrthogonalTiledMapRenderer(map);
+        wallLayer = (TiledMapTileLayer) map.getLayers().get("walls");
+        
+        float spawnX = 80f;
+        float spawnY = 80f;
+
+        entityManager = new EntityManager();
+        
+        MapLayer objectLayer = map.getLayers().get("objects");
+        		if (objectLayer != null) {
+        		    for (MapObject object : objectLayer.getObjects()) {
+        		        if (object instanceof RectangleMapObject) {
+        		            Rectangle rect = ((RectangleMapObject) object).getRectangle();
+        		            String id = object.getName();
+        		            String type = object.getProperties().get("type", String.class);
+        		            String dialogueId = object.getProperties().get("dialogueId", String.class);
+        		            
+        		            if (dialogueId == null) dialogueId = id; // fallback
+        		            
+        		            if ("npc".equals(type)) {
+        		            	String textureName = object.getProperties().get("texture", String.class);
+        		            	if (textureName != null && !textureName.startsWith("assets/")) {
+        		            	    textureName = "assets/" + textureName;
+        		            	}
+        		                
+        		                if (textureName == null) {
+        		                    textureName = "assets/player.png";
+        		                }
+        		                
+        		                String soundName = object.getProperties().get("typing_sound", String.class);
+        		                Gdx.app.log("GameScreen", "Sound name from Tiled: " + soundName);
+        		                Sound typingSound = null;
+        		                
+        		                if (soundName != null) {
+        		                    try {
+        		                        typingSound = am.get(soundName, Sound.class);
+        		                        Gdx.app.log("GameScreen", "Sound loaded successfully: " + typingSound);
+        		                    } catch (Exception e) {
+        		                        Gdx.app.log("GameScreen", "Sound not found: " + soundName);
+        		                    }
+        		                }
+        		                Texture npcTexture = am.get(textureName, Texture.class);
+        		                
+        		                TextureRegion npcSprite = new TextureRegion(npcTexture, 0, 0, npcTexture.getWidth(), npcTexture.getHeight());
+
+        		                DialogueComponent dc = new DialogueComponent(dialogueId);
+        		                if (typingSound != null) {
+        		                    dc.setTypingSound(typingSound);
+        		                    Gdx.app.log("GameScreen", "Sound set to DialogueComponent");
+        		                } else {
+        		                    Gdx.app.log("GameScreen", "Sound is NULL, not set");
+        		                }
+        		                entityManager.add(new NPC(rect.x, rect.y, rect.width, rect.height, id, npcSprite, dc));
+        		            } else if ("spawn".equals(type)) {
+        		            	spawnX = rect.x;
+        		            	spawnY = rect.y;
+        		            }
+        		        }
+        		    }
+        		}
+        Texture playerTexture = am.get("assets/player_sheet.png", Texture.class);
+        
+        CollisionSystem collisionSystem = new CollisionSystem(wallLayer, entityManager.getAllEntities());
+
+        player = new Player(spawnX, spawnY, playerTexture, collisionSystem);
+
+        entityManager.add(player);
+        
+        dialogueManager = new DialogueManager();
+
+        FileHandle dialoguesDir = Gdx.files.internal("assets/dialogues");
+        if (dialoguesDir.exists() && dialoguesDir.isDirectory()) {
+            for (FileHandle entry : dialoguesDir.list()) {
+                if (entry.extension().equals("json")) {
+                	String id = entry.nameWithoutExtension();
+                    Dialogue dialogue = DialogueLoader.loadDialogue(entry);
+                    dialogueManager.addDialogue(id, dialogue);
+                }
+            }
+        }
+        
+        camera = new OrthographicCamera();
+        camera.setToOrtho(false, 320, 240);
+        uiCamera = new OrthographicCamera();
+        uiCamera.setToOrtho(false, 1280, 720);
+        uiCamera.update();
+        
+        font = new BitmapFont();
+        font.getData().setScale(2.0f);
+        
+        viewport = new ExtendViewport(320, 240, camera);
+        uiViewport = new FitViewport(1280, 720, uiCamera);
+        
+        bgMusic = game.getAssetManager().get("assets/music/background_music.ogg", Music.class);
+        bgMusic.setLooping(true);
+        bgMusic.setVolume(0.4f);
+        bgMusic.play();
+    }
+
+    @Override
+    public void render(float delta) {
+        
+        if (showDialogue && currentSession != null && !currentSession.isFinished()) {
+            for (int i = 1; i <= 9; i++) {
+                if (Gdx.input.isKeyJustPressed(Keys.NUM_1 + i - 1)) {
+                    if (i-1 < currentSession.getChoices().size) {
+                        currentSession.choose(i-1);
+                        if (currentSession.isFinished()) {
+                        	showDialogue = false;
+                            currentSession = null;
+                            currentNPC = null;
+                            currentTypingSound = null; 
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        if (Gdx.input.isKeyJustPressed(Keys.Z)) {
+            if (showDialogue) {
+            	if (currentSession != null && !currentSession.isFinished() && !currentSession.hasChoices() && currentSession.hasNext()) {
+            	    currentSession.advanceByNext();
+                    if (currentSession.isFinished()) {
+                    	showDialogue = false;
+                        currentSession = null;
+                        currentNPC = null;      
+                        currentTypingSound = null; 
+                    }
+                } else {
+                	showDialogue = false;
+                	currentSession = null;
+                	currentNPC = null;
+                	currentTypingSound = null;
+                }
+            } else {
+            	Entity nearby = entityManager.getNearby(player, 24f);
+        	    if (nearby instanceof NPC) {
+        	        NPC npc = (NPC) nearby;
+        	        currentNPC = npc; 
+        	        currentTypingSound = npc.getDialogue().getTypingSound();
+        	        String dialogueId = npc.getDialogue().getDialogueId();
+        	        Dialogue dialogue = dialogueManager.getDialogue(dialogueId);
+        	        if (dialogue != null) {
+        	        	currentSession = new DialogueSession(dialogue);
+        	        	showDialogue = true;
+        	        	dialogueCharCount = 0;
+        	        	currentDisplayText = "";
+        	        	dialogueTimer = 0f;
+        	        	lastFullText = ""; 
+        	        }
+        	    }
+            }
+        }
+
+        ScreenUtils.clear(0, 0, 0, 1);
+        
+        camera.position.set(player.x, player.y, 0);
+        camera.update();
+        viewport.apply();
+        
+        mapRenderer.setView(camera);
+        mapRenderer.render();
+        
+        entityManager.update(delta);
+        
+        batch.setProjectionMatrix(camera.combined);
+        batch.begin();
+        entityManager.draw(batch);
+        batch.end();
+        
+        uiViewport.apply();
+        shapes.setProjectionMatrix(uiCamera.combined);
+        batch.setProjectionMatrix(uiCamera.combined);
+        
+        
+        if (showDialogue && currentSession != null) {
+            updateDialogueTyping(delta);
+            
+            shapes.begin(ShapeType.Filled);
+            shapes.setColor(0, 0, 0, 0.8f);
+            shapes.rect(100, 50, 1080, 350);
+            shapes.end();
+
+            batch.begin();
+            
+            drawWrappedText(font, batch, currentDisplayText, 120, 350, 1000);
+            
+            Array<DialogueChoice> choices = currentSession.getChoices();
+            float yPos = 230;
+            for (int i = 0; i < choices.size; i++) {
+                font.draw(batch, (i+1) + ": " + choices.get(i).text, 120, yPos - i * 30);
+            }
+            
+            batch.end();
+        }
+    }
+    
+    private void updateDialogueTyping(float delta) {
+        if (currentSession == null) return;
+        
+        String fullText = currentSession.getText();
+        
+        if (!fullText.equals(lastFullText)) {
+            lastFullText = fullText;
+            dialogueCharCount = 0;
+            currentDisplayText = "";
+            dialogueTimer = 0f;
+            Gdx.app.log("Dialogue", "Text changed. CurrentNPC: " + currentNPC);
+            
+            if (currentNPC != null && currentNPC.getDialogue() != null) {
+            	Gdx.app.log("Dialogue", "TypingSound: " + currentNPC.getDialogue().getTypingSound());
+                currentTypingSound = currentNPC.getDialogue().getTypingSound();
+            } else {
+                currentTypingSound = null;
+            }
+        }
+        
+        if (dialogueCharCount < fullText.length()) {
+            dialogueTimer += delta;
+            if (dialogueTimer >= 0.025f) {
+                dialogueTimer = 0f;
+                dialogueCharCount++;
+                
+                if (currentTypingSound != null) {
+                    char lastChar = fullText.charAt(dialogueCharCount - 1);
+                    if (lastChar != ' ') {
+                        currentTypingSound.play(0.4f);
+                    }
+                }
+                
+                currentDisplayText = fullText.substring(0, dialogueCharCount);
+            }
+        }
+    }
+    
+    private NPC getCurrentNPC() {
+        if (currentSession == null) return null;
+        return currentNPC;
+    }
+    
+    private void drawWrappedText(BitmapFont font, SpriteBatch batch, String text, float x, float y, float maxWidth) {
+        layout = new GlyphLayout();
+        Array<String> lines = new Array<>();
+        StringBuilder currentLine = new StringBuilder();
+        String[] words = text.split(" ");
+        
+        for (String word : words) {
+            String testLine = currentLine.length() == 0 ? word : currentLine + " " + word;
+            layout.setText(font, testLine);
+            
+            if (layout.width <= maxWidth) {
+                if (currentLine.length() > 0) currentLine.append(" ");
+                currentLine.append(word);
+            } else {
+                lines.add(currentLine.toString());
+                currentLine = new StringBuilder(word);
+            }
+        }
+        lines.add(currentLine.toString());
+        
+        float lineHeight = font.getLineHeight();
+        for (int i = 0; i < lines.size; i++) {
+            font.draw(batch, lines.get(i), x, y - i * lineHeight);
+        }
+    }
+
+    @Override
+    public void resize(int width, int height) {
+    	viewport.update(width, height);
+    	uiViewport.update(width, height, true);
+    }
+    
+    @Override
+    public void hide() {
+        if (bgMusic != null && bgMusic.isPlaying()) {
+            bgMusic.pause();
+        }
+    }
+
+    @Override
+    public void show() {
+        if (bgMusic != null && !bgMusic.isPlaying()) {
+            bgMusic.play();
+        }
+    }
+
+    @Override
+    public void pause() {}
+
+    @Override
+    public void resume() {}
+
+    @Override
+    public void dispose() {
+        batch.dispose();
+        shapes.dispose();
+        font.dispose();
+    }
+}
