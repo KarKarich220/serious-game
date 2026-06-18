@@ -13,7 +13,6 @@ public class DialogueParser {
             char c = text.charAt(i);
             
             if (c == '{') {
-                // Команда в фигурных скобках
                 if (currentText.length() > 0) {
                     tokens.add(new DialogueToken(DialogueToken.Type.TEXT, currentText.toString()));
                     currentText.setLength(0);
@@ -28,7 +27,6 @@ public class DialogueParser {
                 i = end + 1;
             } 
             else if (c == '<') {
-                // Тег в угловых скобках
                 if (currentText.length() > 0) {
                     tokens.add(new DialogueToken(DialogueToken.Type.TEXT, currentText.toString()));
                     currentText.setLength(0);
@@ -48,7 +46,6 @@ public class DialogueParser {
             }
         }
         
-        // Добавляем остаток текста
         if (currentText.length() > 0) {
             tokens.add(new DialogueToken(DialogueToken.Type.TEXT, currentText.toString()));
         }
@@ -89,7 +86,6 @@ public class DialogueParser {
             return new DialogueToken(DialogueToken.Type.CALL, actionName + ":" + param);
         } 
         else {
-            // неизвестная команда – игнорируем
             return new DialogueToken(DialogueToken.Type.TEXT, "{" + command + "}");
         }
     }
@@ -115,7 +111,6 @@ public class DialogueParser {
             return new DialogueToken(DialogueToken.Type.COLOR_OFF, "");
         } 
         else {
-            // неизвестный тег – игнорируем
             return new DialogueToken(DialogueToken.Type.TEXT, "<" + tag + ">");
         }
     }

@@ -6,5 +6,5 @@ public class DialogueNode {
     public String id;
     public String text;
     public Array<DialogueChoice> choices;
-    public String next; // fallback if no choices
+    public String next;
 }

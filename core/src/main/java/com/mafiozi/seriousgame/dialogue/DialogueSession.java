@@ -28,14 +28,12 @@ public class DialogueSession {
     public void choose(int index) {
         DialogueChoice choice = currentNode.choices.get(index);
         currentNode = dialogue.nodes.get(choice.nextNodeId);
-        // Автоматически проходим цепочку next, пока не встретим узел с выбором или конец
         followNextChain();
     }
 
     public void advanceByNext() {
         if (hasNext()) {
             currentNode = dialogue.nodes.get(currentNode.next);
-            // И снова автоматический проход
             followNextChain();
         }
     }
@@ -48,7 +46,6 @@ public class DialogueSession {
         return currentNode.next != null && !currentNode.next.isEmpty();
     }
 
-    // Если нужно узнать, есть ли выбор
     public boolean hasChoices() {
         return currentNode.choices != null && currentNode.choices.size > 0;
     }

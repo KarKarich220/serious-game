@@ -7,7 +7,6 @@ import java.util.HashMap;
 
 public class AnimationComponent {
 
-    // Направления (по часовой от низа)
     public enum Direction { DOWN, DOWN_SIDE, SIDE, UP_SIDE, UP }
 
     private final HashMap<String, Animation<TextureRegion>> animations = new HashMap<>();
@@ -21,8 +20,6 @@ public class AnimationComponent {
     private Direction lastMovingDir = Direction.DOWN;
     private boolean lastMovingFlipX = false;
 
-    // frameW, frameH — размер одного кадра в пикселях
-    // sheetCols — сколько кадров в одной строке листа (нужно для расчёта row/col)
     public void addAnimation(String name, Texture sheet,
                              int startFrame, int frameCount,
                              int frameW, int frameH, int sheetCols,
@@ -36,34 +33,6 @@ public class AnimationComponent {
         }
         animations.put(name, new Animation<>(frameDuration, frames));
     }
-
-    /*/ dx, dy — вектор движения
-    public void updateDirection(float dx, float dy, boolean moving) {
-        String state = moving ? "walk" : "idle";
-
-        // Определяем направление и нужно ли зеркалить
-        if (dx < 0) {
-            // Левая сторона — зеркалим правую
-            flipX = true;
-            if (dy < -0.3f)      currentDir = Direction.DOWN_SIDE;
-            else if (dy > 0.3f)  currentDir = Direction.UP_SIDE;
-            else                 currentDir = Direction.SIDE;
-        } else if (dx > 0) {
-            flipX = false;
-            if (dy < -0.3f)      currentDir = Direction.DOWN_SIDE;
-            else if (dy > 0.3f)  currentDir = Direction.UP_SIDE;
-            else                 currentDir = Direction.SIDE;
-        } else {
-            // Чисто вертикально
-            flipX = false;
-            if (dy < 0)          currentDir = Direction.DOWN;
-            else if (dy > 0)     currentDir = Direction.UP;
-            // dy == 0 — стоим, направление не меняем
-        }
-
-        String key = state + "_" + currentDir.name(); // напр. "walk_SIDE"
-        setState(key);
-    }*/
     
     public void updateDirection(float dx, float dy, boolean moving) {
         String state = moving ? "walk" : "idle";
@@ -123,7 +92,6 @@ public class AnimationComponent {
         lastMovingDir = newDir;
         lastMovingFlipX = newFlipX;
         
-        // Применяем изменения только если направление действительно изменилось
         if (newDir != currentDir || newFlipX != flipX) {
             currentDir = newDir;
             flipX = newFlipX;

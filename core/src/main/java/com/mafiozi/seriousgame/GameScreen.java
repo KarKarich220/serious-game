@@ -71,7 +71,6 @@ public class GameScreen implements Screen {
         this.game = game;
         AssetManager am = game.getAssetManager();
 
-        // --- Инициализация графики ---
         batch = new SpriteBatch();
         shapes = new ShapeRenderer();
         font = am.get("assets/fonts/font.fnt", BitmapFont.class);
@@ -85,15 +84,12 @@ public class GameScreen implements Screen {
         viewport = new ExtendViewport(320, 240, camera);
         uiViewport = new FitViewport(1280, 720, uiCamera);
 
-        // --- Загрузка карты ---
         map = am.get("assets/map.tmx", TiledMap.class);
         mapRenderer = new OrthogonalTiledMapRenderer(map);
         wallLayer = (TiledMapTileLayer) map.getLayers().get("walls");
 
-        // --- ИНИЦИАЛИЗИРУЕМ DialogueManager ПЕРВЫМ ---
         dialogueManager = new DialogueManager();
 
-        // --- Загрузка диалогов из папки assets/dialogues ---
         FileHandle dialoguesDir = Gdx.files.internal("assets/dialogues");
         if (dialoguesDir.exists() && dialoguesDir.isDirectory()) {
             for (FileHandle entry : dialoguesDir.list()) {
@@ -118,7 +114,6 @@ public class GameScreen implements Screen {
             }
         }
 
-        // --- Загрузка данных NPC из npcs.json ---
         FileHandle npcFile = Gdx.files.internal("assets/dialogues/npcs.json");
         if (npcFile.exists()) {
             try {
@@ -134,11 +129,9 @@ public class GameScreen implements Screen {
             Gdx.app.log("GameScreen", "npcs.json not found!");
         }
 
-        // --- Сущности ---
         entityManager = new EntityManager();
         float spawnX = 80f, spawnY = 80f;
 
-        // Чтение объектов с карты (NPC, спавн)
         MapLayer objectLayer = map.getLayers().get("objects");
         if (objectLayer != null) {
             for (MapObject object : objectLayer.getObjects()) {
@@ -147,12 +140,10 @@ public class GameScreen implements Screen {
                     String id = object.getName();
                     String type = object.getProperties().get("type", String.class);
                     
-                    // Получаем npcId из свойств объекта
                     String npcId = object.getProperties().get("npc_id", String.class);
                     if (npcId == null) npcId = id;
 
                     if ("npc".equals(type)) {
-                        // Получаем данные из менеджера по npcId
                         NPCData data = dialogueManager.getNPCData(npcId);
                         if (data == null) {
                             Gdx.app.log("GameScreen", "NPC data not found for: " + npcId + ", using defaults");
@@ -166,7 +157,6 @@ public class GameScreen implements Screen {
                             data.offsetY = 0f;
                         }
                         
-                        // Загружаем текстуру
                         Texture npcTexture;
                         try {
                             npcTexture = am.get(data.texture, Texture.class);
@@ -177,7 +167,6 @@ public class GameScreen implements Screen {
                         TextureRegion npcSprite = new TextureRegion(npcTexture, 0, 0,
                                 npcTexture.getWidth(), npcTexture.getHeight());
                         
-                        // Загружаем звук
                         Sound typingSound = null;
                         if (data.typingSound != null) {
                             try {
@@ -187,14 +176,12 @@ public class GameScreen implements Screen {
                             }
                         }
                         
-                        // Создаём компонент диалога
                         DialogueComponent dc = new DialogueComponent(data.dialogueId);
                         if (typingSound != null) {
                             dc.setTypingSound(typingSound);
                         }
                         dc.setInteractRange(data.interactRange);
                         
-                        // Создаём NPC с учётом масштаба и смещения
                         float width = rect.width * data.scale;
                         float height = rect.height * data.scale;
                         float x = rect.x + data.offsetX;
@@ -213,16 +200,13 @@ public class GameScreen implements Screen {
             }
         }
 
-        // --- Игрок ---
         Texture playerTexture = am.get("assets/player_sheet.png", Texture.class);
         collisionSystem = new CollisionSystem(wallLayer, entityManager.getAllEntities());
         player = new Player(spawnX, spawnY, playerTexture, collisionSystem);
         entityManager.add(player);
 
-        // --- Создаём движок диалогов ---
         dialogueEngine = new DialogueEngine(dialogueManager);
 
-        // --- Регистрируем действия ---
         dialogueEngine.registerAction("log", param -> {
             Gdx.app.log("DialogueAction", "Log: " + param);
         });
@@ -252,10 +236,8 @@ public class GameScreen implements Screen {
             }
         });
 
-        // Создаём рендерер диалогов
         dialogueRenderer = new DialogueRenderer(font, shapes, 100, 50, 1080, 350);
 
-        // --- Музыка ---
         bgMusic = game.getAssetManager().get("assets/music/background_music.ogg", Music.class);
         bgMusic.setLooping(true);
         bgMusic.setVolume(0.4f);
@@ -264,14 +246,11 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // --- Обработка ввода ---
         handleInput();
-
-        // --- Обновление мира ---
+        
         entityManager.update(delta);
         dialogueEngine.update(delta);
 
-        // --- Отрисовка ---
         ScreenUtils.clear(0, 0, 0, 1);
 
         camera.position.set(player.getX(), player.getY(), 0);
@@ -286,7 +265,6 @@ public class GameScreen implements Screen {
         entityManager.draw(batch);
         batch.end();
 
-        // --- UI (диалоги) ---
         uiViewport.apply();
         shapes.setProjectionMatrix(uiCamera.combined);
         batch.setProjectionMatrix(uiCamera.combined);
@@ -295,7 +273,6 @@ public class GameScreen implements Screen {
             dialogueRenderer.render(batch, dialogueEngine);
         }
         
-        // Отладка
         if (Gdx.input.isKeyJustPressed(Keys.F3)) {
             showDebug = !showDebug;
         }
@@ -315,7 +292,6 @@ public class GameScreen implements Screen {
 
     private void handleInput() {
         if (dialogueEngine.isActive()) {
-            // Выбор вариантов (цифры 1-9)
             for (int i = 1; i <= 9; i++) {
                 if (Gdx.input.isKeyJustPressed(Keys.NUM_1 + i - 1)) {
                     dialogueEngine.chooseOption(i - 1);
@@ -323,12 +299,10 @@ public class GameScreen implements Screen {
                 }
             }
 
-            // Продолжить / пропустить (Z)
             if (Gdx.input.isKeyJustPressed(Keys.Z)) {
                 dialogueEngine.advance();
             }
         } else {
-            // --- Если диалог не активен, пробуем начать ---
             if (Gdx.input.isKeyJustPressed(Keys.Z)) {
                 Entity nearby = entityManager.getNearby(player, 24f);
                 if (nearby instanceof NPC) {

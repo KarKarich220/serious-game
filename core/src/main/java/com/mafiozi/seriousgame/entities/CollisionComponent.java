@@ -7,7 +7,6 @@ public class CollisionComponent {
     private float offsetX, offsetY;
     private float width, height;
 
-    // Добавляем offsetX, offsetY в конструктор
     public CollisionComponent(Entity entity, float width, float height, float offsetX, float offsetY) {
         this.entity = entity;
         this.width = width;

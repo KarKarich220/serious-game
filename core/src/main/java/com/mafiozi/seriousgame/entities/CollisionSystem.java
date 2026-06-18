@@ -13,7 +13,6 @@ public class CollisionSystem {
         this.entities = entities;
     }
 
-    // Метод теперь принимает Entity и новые координаты
     public boolean collides(Entity entity, float newX, float newY) {
         if (!(entity instanceof CollidableEntity)) return false;
         CollisionComponent col = ((CollidableEntity) entity).getCollision();
@@ -37,7 +36,6 @@ public class CollisionSystem {
         return false;
     }
 
-    // selfEntity – это Entity, который мы проверяем (чтобы не столкнуться самим с собой)
     private boolean collidesWithEntities(Rectangle rect, Entity selfEntity) {
         for (Entity e : entities) {
             if (e == selfEntity) continue;

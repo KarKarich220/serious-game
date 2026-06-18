@@ -22,7 +22,7 @@ public class DialogueLoader {
             DialogueNode node = new DialogueNode();
             node.id = nodeEntry.getString("id");
             node.text = nodeEntry.getString("text");
-            node.next = nodeEntry.getString("next", null); // может отсутствовать
+            node.next = nodeEntry.getString("next", null);
 
             node.choices = new Array<>();
             JsonValue choicesArr = nodeEntry.get("choices");

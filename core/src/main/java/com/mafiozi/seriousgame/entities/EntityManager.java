@@ -13,7 +13,6 @@ public class EntityManager {
     }
 
     public void update(float delta) {
-        // Создаём копию массива, чтобы избежать проблем с модификацией
         Entity[] snapshot = entities.toArray(Entity.class);
         for (Entity e : snapshot) {
             e.update(delta);

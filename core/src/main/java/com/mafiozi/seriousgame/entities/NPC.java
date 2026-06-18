@@ -14,7 +14,6 @@ public class NPC extends Entity implements CollidableEntity {
         super(x, y, width, height, id);
         this.sprite = sprite;
         this.dialogue = dialogue;
-        // Создаём коллизию такого же размера, как спрайт (можно чуть меньше)
         this.collision = new CollisionComponent(this, width, height, 0, 0);
     }
     @Override

@@ -29,16 +29,13 @@ public class DialogueRenderer {
     public void render(SpriteBatch batch, DialogueEngine engine) {
         if (!engine.isActive()) return;
         
-        // Фон окна
         shapes.begin(ShapeRenderer.ShapeType.Filled);
         shapes.setColor(0, 0, 0, 0.85f);
         shapes.rect(windowX, windowY, windowWidth, windowHeight);
         shapes.end();
         
-        // Текст с эффектами
         String text = engine.getDisplayedText();
         if (text != null && !text.isEmpty()) {
-            // Тряска
             float shake = engine.getShakeIntensity();
             if (shake > 0) {
                 shakeOffsetX = (float) (Math.random() - 0.5) * shake * 2;
@@ -48,7 +45,6 @@ public class DialogueRenderer {
                 shakeOffsetY = 0;
             }
             
-            // Цвет
             String colorHex = engine.getCurrentColor();
             Color color = Color.valueOf(colorHex);
             
@@ -58,11 +54,10 @@ public class DialogueRenderer {
                     windowX + 20 + shakeOffsetX,
                     windowY + windowHeight - 30 + shakeOffsetY,
                     windowWidth - 40);
-            font.setColor(Color.WHITE); // сбрасываем на белый
+            font.setColor(Color.WHITE);
             batch.end();
         }
         
-        // Выборы
         Array<DialogueChoice> choices = engine.getChoices();
         if (choices != null && choices.size > 0) {
             batch.begin();

@@ -5,11 +5,11 @@ import com.badlogic.gdx.audio.Sound;
 public class DialogueComponent {
     private String dialogueId;
     private float interactRange = 24f;
-    private Sound typingSound;  // звук печати для этого NPC
+    private Sound typingSound;
 
     public DialogueComponent(String dialogueId) {
         this.dialogueId = dialogueId;
-        this.typingSound = null;  // будет установлен позже
+        this.typingSound = null;
     }
     
     public DialogueComponent(String dialogueId, Sound typingSound) {

@@ -38,6 +38,6 @@ public class Main extends Game {
     @Override
     public void dispose() {
         super.dispose();
-        assetManager.dispose(); // Выгрузит ВСЕ ресурсы разом!
+        assetManager.dispose();
     }
 }
