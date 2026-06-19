@@ -278,6 +278,7 @@ public class DialogueEngine {
     }
     
     public boolean isActive() { return active; }
+    public DialogueManager getDialogueManager() { return manager; }
     public String getDisplayedText() { return displayedText; }
     public boolean isTypingComplete() { return isTypingComplete; }
     public Array<DialogueChoice> getChoices() { 

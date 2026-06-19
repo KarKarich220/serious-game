@@ -21,7 +21,7 @@ public class EntityManager {
 
     public void draw(SpriteBatch batch) {
         if (needsSorting) {
-            entities.sort((a, b) -> Float.compare(b.y, a.y));
+            entities.sort((a, b) -> Float.compare(b.getX(), a.getY()));
             needsSorting = false;
         }
         for (Entity e : entities) {
