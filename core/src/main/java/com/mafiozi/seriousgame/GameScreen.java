@@ -45,7 +45,6 @@ public class GameScreen implements Screen {
 	
 	private boolean showDebug = false;
 	
-    private final Main game;
     private SpriteBatch batch;
     private ShapeRenderer shapes;
     private OrthographicCamera camera;
@@ -67,13 +66,11 @@ public class GameScreen implements Screen {
     private BitmapFont font;
     private Music bgMusic;
 
-    public GameScreen(Main game) {
-        this.game = game;
-        AssetManager am = game.getAssetManager();
+    public GameScreen(AssetLoader assetLoader) {
 
         batch = new SpriteBatch();
         shapes = new ShapeRenderer();
-        font = am.get("assets/fonts/font.fnt", BitmapFont.class);
+        font = assetLoader.get(AssetPaths.FONT, BitmapFont.class);
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 320, 240);
@@ -84,7 +81,7 @@ public class GameScreen implements Screen {
         viewport = new ExtendViewport(320, 240, camera);
         uiViewport = new FitViewport(1280, 720, uiCamera);
 
-        map = am.get("assets/map.tmx", TiledMap.class);
+        map = assetLoader.get(AssetPaths.MAP, TiledMap.class);
         mapRenderer = new OrthogonalTiledMapRenderer(map);
         wallLayer = (TiledMapTileLayer) map.getLayers().get("walls");
 
@@ -97,7 +94,6 @@ public class GameScreen implements Screen {
                     String fileName = entry.name();
                     String id = entry.nameWithoutExtension();
                     
-                    // ПРОПУСКАЕМ npcs.json - ЭТО НЕ ДИАЛОГ!
                     if (fileName.equals("npcs.json") || id.equals("npcs")) {
                         Gdx.app.log("GameScreen", "Skipping NPC data file: " + fileName);
                         continue;
@@ -147,30 +143,18 @@ public class GameScreen implements Screen {
                         NPCData data = dialogueManager.getNPCData(npcId);
                         if (data == null) {
                             Gdx.app.log("GameScreen", "NPC data not found for: " + npcId + ", using defaults");
-                            data = new NPCData();
-                            data.name = id;
-                            data.texture = "assets/guide_npc.png";
-                            data.dialogueId = id;
-                            data.interactRange = 24f;
-                            data.scale = 1.0f;
-                            data.offsetX = 0f;
-                            data.offsetY = 0f;
+                            data = createDefaultNPCData(npcId);
                         }
                         
-                        Texture npcTexture;
-                        try {
-                            npcTexture = am.get(data.texture, Texture.class);
-                        } catch (Exception e) {
-                            Gdx.app.error("GameScreen", "Failed to load texture: " + data.texture);
-                            npcTexture = am.get("assets/player.png", Texture.class);
-                        }
+                        Texture npcTexture = assetLoader.getTexture(data.texture);
+                        
                         TextureRegion npcSprite = new TextureRegion(npcTexture, 0, 0,
                                 npcTexture.getWidth(), npcTexture.getHeight());
                         
                         Sound typingSound = null;
                         if (data.typingSound != null) {
                             try {
-                                typingSound = am.get(data.typingSound, Sound.class);
+                                typingSound = assetLoader.get(AssetPaths.NPC_GUIDE_SOUND, Sound.class);
                             } catch (Exception e) {
                                 Gdx.app.log("GameScreen", "Sound not found: " + data.typingSound);
                             }
@@ -200,7 +184,7 @@ public class GameScreen implements Screen {
             }
         }
 
-        Texture playerTexture = am.get("assets/player_sheet.png", Texture.class);
+        Texture playerTexture = assetLoader.get(AssetPaths.PLAYER_SHEET, Texture.class);
         collisionSystem = new CollisionSystem(wallLayer, entityManager.getAllEntities());
         player = new Player(spawnX, spawnY, playerTexture, collisionSystem);
         entityManager.add(player);
@@ -225,7 +209,7 @@ public class GameScreen implements Screen {
 
         dialogueEngine.registerAction("music", param -> {
             try {
-                Music music = game.getAssetManager().get(param, Music.class);
+                Music music = assetLoader.get(param, Music.class);
                 if (music != null) {
                     music.setLooping(true);
                     music.play();
@@ -238,7 +222,7 @@ public class GameScreen implements Screen {
 
         dialogueRenderer = new DialogueRenderer(font, shapes, 100, 50, 1080, 350);
 
-        bgMusic = game.getAssetManager().get("assets/music/background_music.ogg", Music.class);
+        bgMusic = assetLoader.get(AssetPaths.BACKGROUND_MUSIC, Music.class);
         bgMusic.setLooping(true);
         bgMusic.setVolume(0.4f);
         bgMusic.play();
@@ -319,6 +303,18 @@ public class GameScreen implements Screen {
                 }
             }
         }
+    }
+    
+    private NPCData createDefaultNPCData(String id) {
+        NPCData data = new NPCData();
+        data.name = id;
+        data.texture = AssetPaths.NPC_GUIDE; // используем константу
+        data.dialogueId = id;
+        data.interactRange = 24f;
+        data.scale = 1.0f;
+        data.offsetX = 0f;
+        data.offsetY = 0f;
+        return data;
     }
 
     @Override
