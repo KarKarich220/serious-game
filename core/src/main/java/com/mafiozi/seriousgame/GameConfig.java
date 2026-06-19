@@ -16,6 +16,8 @@ public final class GameConfig {
     
     public static final int SPRITE_SHEET_COLS = 8;
     public static final float ANIMATION_FRAME_DURATION = 0.12f;
+	public static final int GAME_WIDTH = 320;
+	public static final int GAME_HEIGHT = 240;
     
     private GameConfig() {}
 }
