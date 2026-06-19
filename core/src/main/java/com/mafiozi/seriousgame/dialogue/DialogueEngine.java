@@ -15,11 +15,18 @@ public class DialogueEngine {
     private DialogueSession session;
     private boolean active = false;
 
-    public DialogueEngine(DialogueManager manager) {
+    private DialogueRenderer renderer;
+
+    public DialogueEngine(DialogueManager manager, DialogueRenderer renderer) {
         this.manager = manager;
+        this.renderer = renderer;
         this.typer = new DialogueTyper();
         this.commandExecutor = new DialogueCommandExecutor(actions, typer);
         this.typer.setCommandExecutor(commandExecutor);
+    }
+
+    public void setRenderer(DialogueRenderer renderer) {
+        this.renderer = renderer;
     }
 
     public void registerAction(String name, DialogueAction action) {
@@ -94,6 +101,9 @@ public class DialogueEngine {
         session = null;
         typer.reset();
         commandExecutor.resetEffects();
+        if (renderer != null) {
+            renderer.resetAnimation();
+        }
     }
 
     public boolean isActive() { return active; }

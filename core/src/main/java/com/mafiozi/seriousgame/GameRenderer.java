@@ -9,7 +9,6 @@ import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapRenderer;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
-import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.mafiozi.seriousgame.dialogue.DialogueEngine;
@@ -30,9 +29,19 @@ public class GameRenderer {
     private final DialogueRenderer dialogueRenderer;
     private final BitmapFont font;
     private boolean showDebug;
+
+    private float smoothCameraX;
+    private float smoothCameraY;
+    private float cameraSmoothness = 0.08f;
+
+    private float targetZoom = 1f;
+    private float currentZoom = 1f;
+    private float zoomSmoothness = 0.05f;
+
+    private float lookAheadX = 0f;
+    private float lookAheadY = 0f;
     
-    public GameRenderer(AssetLoader assetLoader, TiledMap map, 
-                        EntityManager entityManager, DialogueEngine dialogueEngine) {
+    public GameRenderer(AssetLoader assetLoader, GameWorld gameWorld) {
         this.batch = new SpriteBatch();
         this.shapes = new ShapeRenderer();
         this.font = assetLoader.get(AssetPaths.FONT, BitmapFont.class);
@@ -42,21 +51,62 @@ public class GameRenderer {
         this.uiCamera = new OrthographicCamera();
         this.uiCamera.setToOrtho(false, 1280, 720);
         
-        this.viewport = new ExtendViewport(320, 240, camera);
+        this.viewport = new FitViewport(320, 240, camera);
         this.uiViewport = new FitViewport(1280, 720, uiCamera);
         
+        TiledMap map = gameWorld.getMap();
         this.mapRenderer = new OrthogonalTiledMapRenderer(map);
-        this.entityManager = entityManager;
+        this.entityManager = gameWorld.getEntityManager();
+        
         this.dialogueRenderer = new DialogueRenderer(font, shapes, 100, 50, 1080, 350);
+        
+        gameWorld.setDialogueRenderer(dialogueRenderer);
+        
         this.showDebug = false;
+        this.smoothCameraX = 0f;
+        this.smoothCameraY = 0f;
     }
     
     public void render(Player player, DialogueEngine dialogueEngine, float delta) {
-        ScreenUtils.clear(0, 0, 0, 1);
+        ScreenUtils.clear(0.05f, 0.05f, 0.08f, 1);
         
-        camera.position.set(player.getX(), player.getY(), 0);
+        float targetX = player.getX();
+        float targetY = player.getY();
+        
+        float lookAheadFactor = 15f;
+        if (player.getMoveX() != 0 || player.getMoveY() != 0) {
+            lookAheadX = player.getMoveX() * lookAheadFactor;
+            lookAheadY = player.getMoveY() * lookAheadFactor;
+        } else {
+            lookAheadX *= (1 - cameraSmoothness);
+            lookAheadY *= (1 - cameraSmoothness);
+            if (Math.abs(lookAheadX) < 0.1f) lookAheadX = 0f;
+            if (Math.abs(lookAheadY) < 0.1f) lookAheadY = 0f;
+        }
+        
+        targetX += lookAheadX;
+        targetY += lookAheadY;
+        
+        smoothCameraX += (targetX - smoothCameraX) * cameraSmoothness;
+        smoothCameraY += (targetY - smoothCameraY) * cameraSmoothness;
+        
+        camera.position.set(smoothCameraX, smoothCameraY, 0);
         camera.update();
         viewport.apply();
+        
+        if (dialogueEngine.isActive()) {
+            targetZoom = 1.2f;
+        } else {
+            targetZoom = 1.0f;
+        }
+        
+        currentZoom += (targetZoom - currentZoom) * zoomSmoothness;
+        
+        float targetWidth = 320 / currentZoom;
+        float targetHeight = 240 / currentZoom;
+        camera.viewportWidth = targetWidth;
+        camera.viewportHeight = targetHeight;
+        camera.update();
         
         mapRenderer.setView(camera);
         mapRenderer.render();
@@ -67,32 +117,37 @@ public class GameRenderer {
         batch.end();
         
         uiViewport.apply();
+        uiCamera.update();
         shapes.setProjectionMatrix(uiCamera.combined);
         batch.setProjectionMatrix(uiCamera.combined);
-        
+
         if (dialogueEngine.isActive()) {
-            dialogueRenderer.render(batch, dialogueEngine);
+            dialogueRenderer.renderBackground(dialogueEngine);
         }
-        
+
+        batch.begin();
+
+        if (dialogueEngine.isActive()) {
+            dialogueRenderer.renderText(batch, dialogueEngine);
+        }
+
         if (showDebug) {
             renderDebug(dialogueEngine);
         }
+
+        batch.end();
     }
     
     public void toggleDebug() {
-    	showDebug = !showDebug;
+        showDebug = !showDebug;
     }
     
     private void renderDebug(DialogueEngine dialogueEngine) {
-    	batch.begin();
         font.draw(batch, "FPS: " + Gdx.graphics.getFramesPerSecond(), 10, 700);
         font.draw(batch, "Dialogue active: " + dialogueEngine.isActive(), 10, 670);
         font.draw(batch, "Typing complete: " + dialogueEngine.isTypingComplete(), 10, 640);
-        font.draw(batch, "Shake: " + dialogueEngine.getShakeIntensity(), 10, 610);
-        if (dialogueEngine.isActive()) {
-            font.draw(batch, "Text length: " + dialogueEngine.getDisplayedText().length(), 10, 580);
-        }
-        batch.end();
+        font.draw(batch, "Zoom: " + String.format("%.2f", currentZoom), 10, 610);
+        font.draw(batch, "Cam: " + String.format("%.0f", camera.position.x) + ", " + String.format("%.0f", camera.position.y), 10, 580);
     }
     
     public void resize(int width, int height) {

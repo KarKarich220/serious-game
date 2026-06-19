@@ -13,6 +13,9 @@ public class Player extends Entity implements CollidableEntity {
 
     private float moveDx = 0f;
     private float moveDy = 0f;
+    
+    public float getMoveX() { return moveDx != 0 ? Math.signum(moveDx) : 0; }
+    public float getMoveY() { return moveDy != 0 ? Math.signum(moveDy) : 0; }
 
     public Player(float x, float y, Texture texture, ICollisionSystem collisionSystem) {
         super(x, y, GameConfig.PLAYER_WIDTH, GameConfig.PLAYER_HEIGHT, "player");

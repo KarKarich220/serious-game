@@ -12,6 +12,7 @@ import com.mafiozi.seriousgame.dialogue.Dialogue;
 import com.mafiozi.seriousgame.dialogue.DialogueEngine;
 import com.mafiozi.seriousgame.dialogue.DialogueLoader;
 import com.mafiozi.seriousgame.dialogue.DialogueManager;
+import com.mafiozi.seriousgame.dialogue.DialogueRenderer;
 import com.mafiozi.seriousgame.dialogue.NPCData;
 import com.mafiozi.seriousgame.dialogue.NPCLoader;
 import com.mafiozi.seriousgame.entities.CollisionSystem;
@@ -54,12 +55,18 @@ public class GameWorld {
         );
         entityManager.add(player);
         
-        this.dialogueEngine = new DialogueEngine(dialogueManager);
+        this.dialogueEngine = new DialogueEngine(dialogueManager, null);
         registerDialogueActions(assetLoader);
         
         this.bgMusic = assetLoader.get(AssetPaths.BACKGROUND_MUSIC, Music.class);
         this.bgMusic.setLooping(true);
         this.bgMusic.setVolume(0.4f);
+    }
+    
+    public void setDialogueRenderer(DialogueRenderer renderer) {
+        if (dialogueEngine != null) {
+            dialogueEngine.setRenderer(renderer);
+        }
     }
     
     private void loadDialogues(AssetLoader assetLoader) {

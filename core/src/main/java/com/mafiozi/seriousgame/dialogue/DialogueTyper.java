@@ -3,10 +3,6 @@ package com.mafiozi.seriousgame.dialogue;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.utils.Array;
 
-/**
- * Отвечает за посимвольный вывод текста с учётом скорости, пауз и команд.
- * Работает с токенами, полученными от DialogueParser.
- */
 public class DialogueTyper {
     private Array<DialogueToken> tokens;
     private int currentTokenIndex;
@@ -44,7 +40,7 @@ public class DialogueTyper {
 
     public void start(String text, Array<DialogueToken> tokenList, float speed) {
         reset();
-        // Собираем полный текст из текстовых токенов
+        
         StringBuilder sb = new StringBuilder();
         for (DialogueToken t : tokenList) {
             if (t.type == DialogueToken.Type.TEXT) {

@@ -55,4 +55,8 @@ public class DialogueSession {
             currentNode = dialogue.nodes.get(currentNode.next);
         }
     }
+    
+    public String getDialogueId() {
+        return dialogue.id != null ? dialogue.id : "unknown";
+    }
 }

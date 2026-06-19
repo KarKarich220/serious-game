@@ -14,15 +14,9 @@ public class GameScreen implements Screen {
     public GameScreen(AssetLoader assetLoader) {
         this.gameWorld = new GameWorld(assetLoader);
         
-        this.renderer = new GameRenderer(
-            assetLoader,
-            gameWorld.getMap(),
-            gameWorld.getEntityManager(),
-            gameWorld.getDialogueEngine()
-        );
+        this.renderer = new GameRenderer(assetLoader, gameWorld);
         
         this.gameController = new GameController(gameWorld);
-        
         this.inputHandler = new InputHandler(
             gameWorld.getPlayer(),
             gameWorld.getDialogueEngine(),
