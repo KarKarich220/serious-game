@@ -68,7 +68,7 @@ public class InputHandler {
         }
         
         if (Gdx.input.isKeyJustPressed(keyBindings.getActionKey("interact"))) {
-            Entity nearby = entityManager.getNearby(player, 24f);
+            Entity nearby = entityManager.getNearby(player, GameConfig.INTERACT_RANGE);
             if (nearby instanceof NPC) {
                 NPC npc = (NPC) nearby;
                 String dialogueId = npc.getDialogue().getDialogueId();

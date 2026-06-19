@@ -4,299 +4,112 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.utils.Array;
 
 public class DialogueEngine {
+    private final DialogueManager manager;
+    private final Map<String, DialogueAction> actions = new HashMap<>();
+    private final DialogueCommandExecutor commandExecutor;
+    private final DialogueTyper typer;
+
     private DialogueSession session;
     private boolean active = false;
-    
-    private String fullText = "";
-    private String displayedText = "";
-    private int charIndex = 0;
-    private float typingTimer = 0f;
-    private float typingSpeed = 0.025f;
-    private boolean isTypingComplete = false;
-    
-    private boolean isPaused = false;
-    private float pauseTimer = 0f;
-    private boolean waitingForCommand = false;
-    
-    private Array<DialogueToken> tokens;
-    private int currentTokenIndex = 0;
-    private int charsPrintedInToken = 0;
-    
-    private boolean shakeActive = false;
-    private float shakeIntensity = 2f;
-    private String currentColor = "#FFFFFF";
-    private boolean colorActive = false;
-    private Sound typingSound = null;
-    
-    private Map<String, DialogueAction> actions = new HashMap<>();
-    private DialogueManager manager;
-    
+
     public DialogueEngine(DialogueManager manager) {
         this.manager = manager;
+        this.typer = new DialogueTyper();
+        this.commandExecutor = new DialogueCommandExecutor(actions, typer);
+        this.typer.setCommandExecutor(commandExecutor);
     }
-    
+
     public void registerAction(String name, DialogueAction action) {
         actions.put(name, action);
     }
-    
-    public void setTypingSound(Sound sound) {
-        this.typingSound = sound;
+
+    public void setTypingSound(com.badlogic.gdx.audio.Sound sound) {
+        typer.setTypingSound(sound);
     }
-    
+
     public void startDialogue(String dialogueId) {
         Dialogue dialogue = manager.getDialogue(dialogueId);
-        if (dialogue == null) return;
+        if (dialogue == null) {
+            Gdx.app.error("DialogueEngine", "Dialogue not found: " + dialogueId);
+            return;
+        }
         session = new DialogueSession(dialogue);
         active = true;
-        parseTokens(session.getText());
-        resetTyping();
+        
+        String text = session.getText();
+        Array<DialogueToken> tokens = DialogueParser.parse(text);
+        
+        commandExecutor.resetEffects();
+        
+        typer.start(text, tokens, 0.025f);
     }
-    
-    private void parseTokens(String text) {
-        tokens = DialogueParser.parse(text);
-        StringBuilder sb = new StringBuilder();
-        for (DialogueToken t : tokens) {
-            if (t.type == DialogueToken.Type.TEXT) {
-                sb.append(t.value);
-            }
-        }
-        fullText = sb.toString();
-    }
-    
-    private void resetTyping() {
-        displayedText = "";
-        charIndex = 0;
-        typingTimer = 0f;
-        isTypingComplete = false;
-        isPaused = false;
-        pauseTimer = 0f;
-        waitingForCommand = false;
-        currentTokenIndex = 0;
-        charsPrintedInToken = 0;
-        shakeActive = false;
-        shakeIntensity = 2f;
-        currentColor = "#FFFFFF";
-        colorActive = false;
-    }
-    
+
     public void update(float delta) {
         if (!active || session == null) return;
-        
-        if (isPaused) {
-            pauseTimer -= delta;
-            if (pauseTimer <= 0) {
-                isPaused = false;
-            }
-            return;
-        }
-        
-        if (isTypingComplete) return;
-        
-        typingTimer += delta;
-        
-        while (typingTimer >= typingSpeed && !isTypingComplete && !isPaused) {
-            typingTimer -= typingSpeed;
-            
-            if (currentTokenIndex >= tokens.size) {
-                isTypingComplete = true;
-                break;
-            }
-            
-            DialogueToken token = tokens.get(currentTokenIndex);
-            
-            if (token.type == DialogueToken.Type.TEXT) {
-                String text = token.value;
-                if (charsPrintedInToken < text.length()) {
-                    char c = text.charAt(charsPrintedInToken);
-                    charIndex++;
-                    displayedText = fullText.substring(0, Math.min(charIndex, fullText.length()));
-                    charsPrintedInToken++;
-                    
-                    if (typingSound != null && c != ' ') {
-                        typingSound.play(0.4f);
-                    }
-                    
-                    if (charsPrintedInToken >= text.length()) {
-                        currentTokenIndex++;
-                        charsPrintedInToken = 0;
-                        processNextToken();
-                    }
-                }
-            } else {
-                processCommand(token);
-                currentTokenIndex++;
-                charsPrintedInToken = 0;
-                
-                if (currentTokenIndex >= tokens.size) {
-                    isTypingComplete = true;
-                }
-            }
-        }
+        typer.update(delta);
     }
-    
-    private void processNextToken() {
-        if (currentTokenIndex >= tokens.size) {
-            isTypingComplete = true;
-            return;
-        }
-        
-        DialogueToken token = tokens.get(currentTokenIndex);
-        if (token.type != DialogueToken.Type.TEXT) {
-            processCommand(token);
-            currentTokenIndex++;
-            processNextToken();
-        }
-    }
-    
-    private void processCommand(DialogueToken token) {
-        switch (token.type) {
-            case PAUSE:
-                isPaused = true;
-                pauseTimer = token.floatParam;
-                Gdx.app.log("DialogueEngine", "Pause: " + pauseTimer + "s");
-                break;
-                
-            case SHAKE_ON:
-                shakeActive = true;
-                Gdx.app.log("DialogueEngine", "Shake ON");
-                break;
-                
-            case SHAKE_OFF:
-                shakeActive = false;
-                Gdx.app.log("DialogueEngine", "Shake OFF");
-                break;
-                
-            case COLOR_ON:
-                currentColor = token.value;
-                colorActive = true;
-                Gdx.app.log("DialogueEngine", "Color ON: " + currentColor);
-                break;
-                
-            case COLOR_OFF:
-                colorActive = false;
-                currentColor = "#FFFFFF";
-                Gdx.app.log("DialogueEngine", "Color OFF");
-                break;
-                
-            case MUSIC:
-                executeAction("music", token.value);
-                break;
-                
-            case SOUND:
-                executeAction("sound", token.value);
-                break;
-                
-            case CALL:
-                String[] parts = token.value.split(":", 2);
-                String actionName = parts[0];
-                String param = parts.length > 1 ? parts[1] : "";
-                executeAction(actionName, param);
-                break;
-                
-            case SPEED:
-                typingSpeed = token.floatParam;
-                Gdx.app.log("DialogueEngine", "Speed changed to: " + typingSpeed);
-                break;
-                
-            default:
-                break;
-        }
-    }
-    
-    private void executeAction(String name, String param) {
-        DialogueAction action = actions.get(name);
-        if (action != null) {
-            action.execute(param);
-        }
-    }
-    
+
     public void advance() {
         if (!active || session == null) return;
-        
-        if (!isTypingComplete) {
-            skipTyping();
+
+        if (!typer.isTypingComplete()) {
+            typer.skipTyping();
             return;
         }
-        
+
         if (session.hasChoices()) return;
-        
+
         if (session.hasNext()) {
             session.advanceByNext();
-            parseTokens(session.getText());
-            resetTyping();
+            String text = session.getText();
+            Array<DialogueToken> tokens = DialogueParser.parse(text);
+            commandExecutor.resetEffects();
+            typer.start(text, tokens, 0.025f);
         } else if (session.isFinished()) {
             closeDialogue();
         }
     }
-    
-    public void skipTyping() {
-        if (!isTypingComplete) {
-            while (currentTokenIndex < tokens.size) {
-                DialogueToken token = tokens.get(currentTokenIndex);
-                if (token.type != DialogueToken.Type.TEXT) {
-                    processCommand(token);
-                }
-                currentTokenIndex++;
-            }
-            
-            charIndex = fullText.length();
-            displayedText = fullText;
-            isTypingComplete = true;
-            isPaused = false;
-        }
-    }
-    
+
     public void chooseOption(int index) {
         if (!active || session == null) return;
         if (!session.hasChoices()) return;
         if (index < 0 || index >= session.getChoices().size) return;
-        
+
         session.choose(index);
         if (session.isFinished()) {
             closeDialogue();
         } else {
-            parseTokens(session.getText());
-            resetTyping();
+            String text = session.getText();
+            Array<DialogueToken> tokens = DialogueParser.parse(text);
+            commandExecutor.resetEffects();
+            typer.start(text, tokens, 0.025f);
         }
     }
-    
+
     public void closeDialogue() {
         active = false;
         session = null;
-        displayedText = "";
-        fullText = "";
-        isTypingComplete = false;
-        isPaused = false;
-        pauseTimer = 0f;
-        shakeActive = false;
-        colorActive = false;
-        currentColor = "#FFFFFF";
+        typer.reset();
+        commandExecutor.resetEffects();
     }
-    
+
     public boolean isActive() { return active; }
+    public String getDisplayedText() { return typer.getDisplayedText(); }
+    public boolean isTypingComplete() { return typer.isTypingComplete(); }
+    public Array<DialogueChoice> getChoices() {
+        return session != null ? session.getChoices() : null;
+    }
+    public float getShakeIntensity() { return commandExecutor.getShakeIntensity(); }
+    public String getCurrentColor() { return commandExecutor.getCurrentColor(); }
+    public boolean isColorActive() { return commandExecutor.isColorActive(); }
+    public boolean isShakeActive() { return commandExecutor.isShakeActive(); }
+
     public DialogueManager getDialogueManager() { return manager; }
-    public String getDisplayedText() { return displayedText; }
-    public boolean isTypingComplete() { return isTypingComplete; }
-    public Array<DialogueChoice> getChoices() { 
-        return session != null ? session.getChoices() : null; 
-    }
-    
-    public float getShakeIntensity() { 
-        return shakeActive ? shakeIntensity : 0f; 
-    }
-    
-    public String getCurrentColor() { 
-        return colorActive ? currentColor : "#FFFFFF"; 
-    }
-    
-    public boolean isColorActive() { return colorActive; }
-    public boolean isShakeActive() { return shakeActive; }
     public DialogueSession getSession() { return session; }
-    
+
     public interface DialogueAction {
         void execute(String param);
     }
