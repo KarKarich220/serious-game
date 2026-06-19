@@ -20,6 +20,6 @@ public class CollisionComponent {
     }
 
     public Rectangle getBounds() {
-        return getBounds(entity.x, entity.y);
+        return getBounds(entity.getX(), entity.getY());
     }
 }
