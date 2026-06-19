@@ -57,9 +57,14 @@ public class InputHandler {
         if (Gdx.input.isKeyPressed(keyBindings.getActionKey("move_right"))) dx += 1;
         
         if (dx != 0 || dy != 0) {
-            float speed = 60f;
-            player.move(dx * speed * Gdx.graphics.getDeltaTime(), 
-                       dy * speed * Gdx.graphics.getDeltaTime());
+            float length = (float) Math.sqrt(dx * dx + dy * dy);
+            
+            dx /= length;
+            dy /= length;
+            
+            float speed = GameConfig.PLAYER_SPEED;
+            player.move(dx * speed * Gdx.graphics.getDeltaTime(),
+                        dy * speed * Gdx.graphics.getDeltaTime());
         }
         
         if (Gdx.input.isKeyJustPressed(keyBindings.getActionKey("interact"))) {
