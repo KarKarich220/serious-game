@@ -1,24 +1,24 @@
 package com.mafiozi.seriousgame;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapRenderer;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
-import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
-import com.crashinvaders.vfx.VfxManager;
-import com.crashinvaders.vfx.effects.VignettingEffect; // Пример готового эффекта из либы
-// import com.crashinvaders.vfx.effects.FilmGrainEffect; // Если захочешь зернистость
 import com.mafiozi.seriousgame.dialogue.DialogueEngine;
 import com.mafiozi.seriousgame.dialogue.DialogueRenderer;
 import com.mafiozi.seriousgame.entities.EntityManager;
 import com.mafiozi.seriousgame.entities.Player;
+import com.mafiozi.seriousgame.rendering.DebugRenderer;
+import com.mafiozi.seriousgame.rendering.EffectsController;
+import com.mafiozi.seriousgame.rendering.OverlayRenderer;
+import com.mafiozi.seriousgame.rendering.PostProcessor;
+import com.mafiozi.seriousgame.rendering.UIRenderer;
+import com.mafiozi.seriousgame.rendering.WorldRenderer;
 
 public class GameRenderer {
     private static final int GAME_WIDTH = 320;
@@ -37,7 +37,6 @@ public class GameRenderer {
     private final BitmapFont font;
     private boolean showDebug;
 
-    // Твоя плавная камера
     private float smoothCameraX;
     private float smoothCameraY;
     private final float cameraSmoothness = 0.08f;
@@ -48,10 +47,15 @@ public class GameRenderer {
 
     private float lookAheadX = 0f;
     private float lookAheadY = 0f;
-
-    // Менеджер эффектов из новой библиотеки
-    private final VfxManager vfxManager;
+    
     private boolean vfxEnabled = true;
+    
+    private WorldRenderer worldRenderer;
+    private UIRenderer uiRenderer;
+    private DebugRenderer debugRenderer;
+    private PostProcessor postProcessor;
+    private EffectsController effects;
+    private OverlayRenderer overlayRenderer;
 
     public GameRenderer(AssetLoader assetLoader, GameWorld gameWorld) {
         this.batch = new SpriteBatch();
@@ -72,37 +76,65 @@ public class GameRenderer {
 
         this.dialogueRenderer = new DialogueRenderer(font, shapes, 100, 50, 1080, 350);
         gameWorld.setDialogueRenderer(dialogueRenderer);
+        
+        this.effects = new EffectsController();
+        this.postProcessor = new PostProcessor();
+        this.worldRenderer = new WorldRenderer(map, entityManager);
+        this.uiRenderer = new UIRenderer(dialogueRenderer, shapes);
+        this.debugRenderer = new DebugRenderer(font);
+        this.overlayRenderer = new OverlayRenderer(batch, shapes);
 
         this.showDebug = false;
         this.smoothCameraX = 0f;
         this.smoothCameraY = 0f;
-
-        // Инициализируем VFX либу
-        // gdx-vfx сама подберет правильный внутренний формат пикселей
-        this.vfxManager = new VfxManager(Pixmap.Format.RGBA8888);
         
-        // ДЛЯ ТЕСТА: Добавим виньетку из стандартного набора либы.
-        // Если у тебя есть свой кастомный FilterManager со старым шейдером, 
-        // ниже я напишу, как его сюда встроить.
-        VignettingEffect vignette = new VignettingEffect(false);
-        vignette.setIntensity(0.5f);
-        vfxManager.addEffect(vignette);
     }
 
     public void render(Player player, DialogueEngine dialogueEngine, float delta) {
-        // --- 1. МАТЕМАТИКА КАМЕРЫ (Чистый рабочий float без округлений) ---
+
+        effects.update(delta);
+        postProcessor.update(effects);
+
+        updateCamera(player, effects);
+
+     // ===== WORLD =====
+        postProcessor.begin(vfxEnabled);
+
+        worldRenderer.render(camera);
+
+        postProcessor.end(vfxEnabled);
+
+        // ===== UI =====
+        uiViewport.apply();
+        uiCamera.update();
+
+        batch.setProjectionMatrix(uiCamera.combined);
+        shapes.setProjectionMatrix(uiCamera.combined);
+		// 🔥 OVERLAY СЮДА
+        overlayRenderer.render(effects, uiCamera);
+
+        // dialogue background
+        uiRenderer.renderBackground(dialogueEngine, uiCamera);
+
+        // text
+        batch.begin();
+        uiRenderer.renderText(batch, dialogueEngine);
+        debugRenderer.render(batch, dialogueEngine, currentZoom, vfxEnabled);
+        batch.end();
+    }
+    
+    private void updateCamera(Player player, EffectsController effects) {
         float targetX = player.getX();
         float targetY = player.getY();
 
         float lookAheadFactor = 15f;
+
         if (player.getMoveX() != 0 || player.getMoveY() != 0) {
             lookAheadX = player.getMoveX() * lookAheadFactor;
             lookAheadY = player.getMoveY() * lookAheadFactor;
         } else {
             lookAheadX *= (1 - cameraSmoothness);
             lookAheadY *= (1 - cameraSmoothness);
-            if (Math.abs(lookAheadX) < 0.1f) lookAheadX = 0f;
-            if (Math.abs(lookAheadY) < 0.1f) lookAheadY = 0f;
         }
 
         targetX += lookAheadX;
@@ -111,68 +143,22 @@ public class GameRenderer {
         smoothCameraX += (targetX - smoothCameraX) * cameraSmoothness;
         smoothCameraY += (targetY - smoothCameraY) * cameraSmoothness;
 
-        if (dialogueEngine.isActive()) {
-            targetZoom = 1.2f;
-        } else {
-            targetZoom = 1.0f;
-        }
+        targetZoom = player.isMoving() ? 1.1f : 1f;
         currentZoom += (targetZoom - currentZoom) * zoomSmoothness;
 
-        // Обновляем камеру
         camera.position.set(smoothCameraX, smoothCameraY, 0);
+
+        // 🎯 CAMERA SHAKE
+        float shake = effects.getShakeIntensity();
+        if (shake > 0) {
+            camera.position.x += (Math.random() - 0.5f) * shake;
+            camera.position.y += (Math.random() - 0.5f) * shake;
+        }
+
         camera.viewportWidth = GAME_WIDTH / currentZoom;
         camera.viewportHeight = GAME_HEIGHT / currentZoom;
+
         camera.update();
-
-        // --- 2. РЕНДЕРИНГ ИГРЫ ---
-        
-        if (vfxEnabled) {
-            // Либа перехватывает весь рендер в свой внутренний буфер
-            vfxManager.cleanUpBuffers();
-            vfxManager.beginInputCapture();
-        }
-
-        // Очищаем экран внутри захвата буфера
-        ScreenUtils.clear(0.05f, 0.05f, 0.08f, 1f);
-        viewport.apply();
-
-        // Рендерим карту и сущностей
-        mapRenderer.setView(camera);
-        mapRenderer.render();
-
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
-        entityManager.draw(batch);
-        batch.end();
-
-        if (vfxEnabled) {
-            // Заканчиваем захват сцены
-            vfxManager.endInputCapture();
-            
-            // Применяем эффекты и выводим готовый буфер прямо на экран!
-            // Она автоматически учтет размеры окна и FitViewport.
-            vfxManager.applyEffects();
-            vfxManager.renderToScreen();
-        }
-
-        // --- 3. РЕНДЕР ИНТЕРФЕЙСА (Поверх эффектов, чтобы текст не мылился) ---
-        uiViewport.apply();
-        uiCamera.update();
-        shapes.setProjectionMatrix(uiCamera.combined);
-        batch.setProjectionMatrix(uiCamera.combined);
-
-        if (dialogueEngine.isActive()) {
-            dialogueRenderer.renderBackground(dialogueEngine);
-        }
-
-        batch.begin();
-        if (dialogueEngine.isActive()) {
-            dialogueRenderer.renderText(batch, dialogueEngine);
-        }
-        if (showDebug) {
-            renderDebug(dialogueEngine);
-        }
-        batch.end();
     }
 
     public void toggleDebug() {
@@ -183,24 +169,14 @@ public class GameRenderer {
         vfxEnabled = !vfxEnabled;
     }
 
-    private void renderDebug(DialogueEngine dialogueEngine) {
-        font.draw(batch, "FPS: " + Gdx.graphics.getFramesPerSecond(), 10, 700);
-        font.draw(batch, "Dialogue active: " + dialogueEngine.isActive(), 10, 670);
-        font.draw(batch, "Zoom: " + String.format("%.2f", currentZoom), 10, 610);
-        font.draw(batch, "VFX: " + (vfxEnabled ? "ON" : "OFF"), 10, 580);
-    }
-
     public void resize(int width, int height) {
         viewport.update(width, height, false);
         uiViewport.update(width, height, true);
-        // Либа сама знает, как правильно изменить размер своих буферов!
-        vfxManager.resize(width, height);
     }
 
     public void dispose() {
         batch.dispose();
         shapes.dispose();
         font.dispose();
-        vfxManager.dispose();
     }
 }

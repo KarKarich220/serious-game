@@ -14,6 +14,8 @@ public class Player extends Entity implements CollidableEntity {
     private float moveDx = 0f;
     private float moveDy = 0f;
     
+    private boolean moving = false;
+    
     public float getMoveX() { return moveDx != 0 ? Math.signum(moveDx) : 0; }
     public float getMoveY() { return moveDy != 0 ? Math.signum(moveDy) : 0; }
 
@@ -80,7 +82,7 @@ public class Player extends Entity implements CollidableEntity {
 
         float actualDx = getX() - oldX;
         float actualDy = getY() - oldY;
-        boolean moving = (Math.abs(actualDx) > 0.001f || Math.abs(actualDy) > 0.001f);
+        moving = (Math.abs(actualDx) > 0.001f || Math.abs(actualDy) > 0.001f);
         animation.updateDirection(actualDx, actualDy, moving);
         animation.update(delta);
 
@@ -92,6 +94,8 @@ public class Player extends Entity implements CollidableEntity {
     public void draw(SpriteBatch batch) {
         batch.draw(animation.getFrame(), getX(), getY(), getWidth(), getHeight());
     }
+    
+    public boolean isMoving() { return moving; }
 
     @Override
     public CollisionComponent getCollision() {
